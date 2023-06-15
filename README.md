@@ -43,6 +43,8 @@ Build the image:
 
 Configuring the script is done with environment variables. You can use the included env.example file as a base. To pass the environment variables, you can pass them in the `docker run` invocation, or you can create an .env file in the script directory and pass it with the `--env-file` flag.  
 
+> Optionally, you may also create a volume to store the script's database file in the event that you destroy the container. With the way the script is written, the only time duplicate messages should be sent is in the event of an issue with the Reddit API. The database is stored at the path `/app/processed_modmails.txt` inside the container. 
+
 Run the container:
 
     # with an env file
