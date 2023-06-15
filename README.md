@@ -13,52 +13,61 @@ If a Modmail message comes from an admin, the bot will send a private message to
 
 ### Requirements
 
-    Python 3
-    PRAW: Python Reddit API Wrapper
+* Python 3
 
-To install PRAW, run:
-
-
-
-    pip install praw
+Alternatively, you can use the Dockerfile to build an image and run the script in a container. See the Docker subsectionin the Usage section below for more information.
 
 ### Usage
 
 Clone the repository:
 
-
     git clone https://github.com/yourusername/auto_respond.git
     cd auto_respond
 
- You need to have a config.py file in your project directory with your Reddit app credentials:
+#### Running Locally
+To install the script's module requirements, set up a virtual environment (`python3 -m venv ./venv`), activate it (`source ./venv/bin/activate`), and run the following command:
+    ```shell
+    pip install -r requirements.txt
+    ```
 
-
-
-    client_id = 'your_client_id'
-    client_secret = 'your_client_secret'
-    refresh_token = 'your_refresh_token'
+Once the requirements are installed, create an .env file in the script directory. You can use the included env.example file as a base.
 
 Run the script:
 
-
-
     python3 auto_respond.py
 
-Configuring the Bot
+#### Docker
+Build the image:
 
-You can customize the bot's behavior by modifying the following variables in the auto_respond.py script:
+    docker build -t auto_respond .
 
- #### allowed_subreddits: List of subreddits the bot should operate on.
- 
- #### keywords: List of keywords the bot should respond to.
- 
- #### main_response_message: The message the bot should send in response to matching Modmail messages.
+Configuring the script is done with environment variables. You can use the included env.example file as a base. To pass the environment variables, you can pass them in the `docker run` invocation, or you can create an .env file in the script directory and pass it with the `--env-file` flag.  
 
-Contributing
+> Optionally, you may also create a volume to store the script's database file in the event that you destroy the container. With the way the script is written, the only time duplicate messages should be sent is in the event of an issue with the Reddit API. The database is stored at the path `/app/processed_modmails.txt` inside the container. 
+
+Run the container:
+
+    # with an env file
+    docker run -d --env-file .env --name auto_respond auto_respond
+    # without an env file, use a series of -e flags to pass the environment variables. Example below
+    docker run -d -e "key=value" --name auto_respond auto_respond
+
+### Configuring the Bot
+
+You can customize the bot's behavior by setting the following environment variables:
+
+* `REDDIT_API_CLIENT_ID` - String: Client ID for the Reddit app you have configured in the Reddit API portal. Required.
+* `REDDIT_API_CLIENT_SECRET` - String: Client secret for the Reddit app you have configured in the Reddit API portal. Required.
+* `REDDIT_API_REFRESH_TOKEN` - String: Refresh token for the Reddit app you have configured in the Reddit API portal. Required.
+* `ALLOWED_SUBREDDITS` - List: Subreddits the bot will operate on. Required.
+* `MAIN_RESPONSE_MESSAGE` - String: Message the bot will send in response to a Modmail message. Required.
+* `USER_AGENT` - String: User agent to use when interacting with Reddit's API. Optional, default: "modmail_auto_responder_v0.1 by u/buckrowdy"
+
+# Contributing
 
 We appreciate your contributions! Please fork this repository, make your changes, and submit a pull request. If you have any questions or need help, feel free to open an issue.
 
-Disclaimer
+# Disclaimer
 
 This bot should be used responsibly and in accordance with Reddit's API Terms of Service. The creator of this bot is not responsible for any misuse or damage caused by this bot.
 
