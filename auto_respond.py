@@ -1,28 +1,46 @@
 import praw
 import time
-import requests
-import config
+import environs
+
+env = environs.Env()
+if env.bool("READ_DOTENV", default=True):
+    # Read .env 
+    env.read_env(False)
 
 
 # Create a Reddit instance
 reddit = praw.Reddit(
-	client_id = config.client_id,
-	client_secret = config.client_secret,
-	user_agent="modmail_auto_responder_v0.1 by u/buckrowdy",
-	refresh_token =config.refresh_token,
+	client_id = env.str("REDDIT_API_CLIENT_ID"),
+	client_secret = env.str("REDDIT_API_CLIENT_SECRET"),
+	user_agent=env.str("USER_AGENT", Default="modmail_auto_responder_v0.1 by u/buckrowdy"),
+	refresh_token = env.str("REDDIT_API_REFRESH_TOKEN"),
 )
 
 # Define the list you want this to operate on.  A modmail conversation stream fetches ALL subreddits
-allowed_subreddits = ["YOUR_SUBREDDITS_HERE", "AS_A_LIST"]
+if(env.list("ALLOWED_SUBREDDITS", Default=list()) == []):
+    print("No subreddits defined in ALLOWED_SUBREDDITS. Please define this variable in your environment or .env file.")
+    exit(1)
+allowed_subreddits = env.list("ALLOWED_SUBREDDITS", Default=list())
 
 # Define the list of keywords for the auto-respond trigger
 keywords = ['request to join','let me in', 'access', 'member', 'private', 'blackout', 'dark', 'closed', 'join', 'shutdown,']
 
 # Define the auto-response
-main_response_message =f"Hello and thank you...[YOUR_MESSAGE_HERE]" 
+if env.str("MAIN_RESPONSE_MESSAGE", default="") == "":
+    print("No response message defined in MAIN_RESPONSE_MESSAGE. Please define this variable in your environment or .env file.")
+    exit(1)
+main_response_message = env.str("MAIN_RESPONSE_MESSAGE")
 
-# Set up a list to hold IDs of modmail the bot has already replied to.
-processed_mail = []
+# Read the list of processed modmails from a file so we don't reply to the same one twice.
+try:
+    with open('processed_modmails.txt', 'r') as f:
+        processed_mail = f.read().splitlines()
+except FileNotFoundError:
+    processed_mail = []
+    # Create the file if it doesn't exist
+    with open('processed_modmails.txt', 'w') as f:
+        f.write('')
+        f.close()
 
 # Begin the mnain function of the bot.  The bot will need to be interrupted manually
 while True:
@@ -34,7 +52,7 @@ while True:
             # Check if the conversation owner is in the list of allowed subreddits
             if conv.owner not in allowed_subreddits:
                 continue  # If not, skip the rest of this loop and move to the next conversation
-         
+        
             # This specific condition will send a PM top every mod on the team if an admin modmail is sent so you don't miss it.
             if len([author for author in conv.authors if author.is_admin]) > 0:
                 # Utilize u/mod_mailer, a mail relay bot.
@@ -57,12 +75,15 @@ while True:
                 if any(keyword in original_message for keyword in keywords) or any(keyword in modmail_subject for keyword in keywords):
                     print(f"Found modmail in r/{conv.owner}  > {keyword} < in message from user {conv.user.name}")
                     # Reply and archive the message with the preset response, hide the username of the sender.
-                    conv.reply(body=response_message, author_hidden=True)
+                    conv.reply(body=main_response_message, author_hidden=True)
                     conv.archive()
                     # Add the id of the conversation to a list so it won't be checked again.
                     processed_mail.append(conv.id)
+                    # Append the id of the conversation to a file so it won't be checked again.
+                    with open('processed_modmails.txt', 'a') as f:
+                        f.write(f"{conv.id}\n")
                     print(f"Replied to message ID {conv.id} from user {conv.user.name} with the preset response\n")
-                 
+                
     except Exception as e:
         print(f"An error occurred: {e}")
         print("Sleeping for 60 seconds before retrying...")
